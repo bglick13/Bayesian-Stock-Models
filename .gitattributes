@@ -1,1 +1,2 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
+combined_price_history.pkl filter=lfs diff=lfs merge=lfs -text

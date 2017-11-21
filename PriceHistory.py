@@ -60,7 +60,8 @@ class PriceHistory:
                     df['fast'] = df['Close'].rolling(7).mean()
                     df['momentum'] = (df['fast'] - df['slow']) / df['slow']
                     df['value'] = (df['Close'] - df['Close'].rolling(252*3).mean()) / df['Close'].rolling(252*3).mean()
-                    df['rolling_volume'] = df['Volume'].rolling(22).sum()
+                    df['dollar_volume'] = df['Volume'] * df['Close']
+                    df['average_dollar_volume'] = df['dollar_volume'].rolling(22).mean()
                     self.dfs[t] = df
                     successes += 1
                     success = True
@@ -92,13 +93,20 @@ class PriceHistory:
         df['security_enc'] = df['ticker'].apply(lambda x: security_encodings[x])
         df['scaled_volume'] = np.log(pd.to_numeric(df['Volume'].values) + 1)
         df['volume_rank'] = 0
+        df['vol_category'] = 0
         for key, grp in df.groupby('Date'):
-            df.loc[df.Date == key, 'volume_rank'] = grp.rolling_volume.rank()
+            df.loc[df.Date == key, 'vol_category'] = pd.qcut(grp.vol, 10, labels=range(10))
+            df.loc[df.Date == key, 'volume_rank']  = grp['average_dollar_volume'].rank() - 1
 
-        self.combined_price_history = df
+        df['volume_rank'] = df['volume_rank'].astype(int)
+        df['vol_category'] = df['vol_category'].astype(int)
+
+        self.combined_price_history = df.dropna()
+        pd.to_pickle(self.combined_price_history, 'combined_price_history.pkl')
 
     def gen_train_test(self, feature_cols, target_col, ts=.4):
-        return train_test_split(self.combined_price_history[feature_cols], self.combined_price_history[target_col],
+        return train_test_split(self.combined_price_history[feature_cols],
+                                self.combined_price_history.loc[:, ['Date', 'log_return', target_col]],
                                 test_size=ts)
 
     def gen_train_test_ts(self, feature_cols, target_col):

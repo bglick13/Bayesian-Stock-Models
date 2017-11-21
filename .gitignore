@@ -2,3 +2,5 @@
 .xml
 .DS_Store
 .idea
+combined_price_history.pkl
+*.pyc
